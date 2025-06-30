@@ -64,47 +64,47 @@ class AuthController extends Controller
     // }
 
     // Return and re redirect
-   public function login(Request $request)
-    {
-        $credentials = $request->only('email', 'password');
+//    public function login(Request $request)
+//     {
+//         $credentials = $request->only('email', 'password');
 
-        if (Auth::attempt($credentials)) {
+//         if (Auth::attempt($credentials)) {
             
-            // Create a secure token (can also use Laravel signed URLs)
+//             // Create a secure token (can also use Laravel signed URLs)
 
-            $user = auth()->user();
-            $t = null;
+//             $user = auth()->user();
+//             $t = null;
 
-            if ($user != ''){
-                $t = encrypt([
-                    'email' => $user->email,
-                    'name'  => $user->name,
-                    'timestamp' => now()->timestamp,
-                ]);
+//             if ($user != ''){
+//                 $t = encrypt([
+//                     'email' => $user->email,
+//                     'name'  => $user->name,
+//                     'timestamp' => now()->timestamp,
+//                 ]);
                 
-            }
+//             }
             
-            try {
-                    Http::post('http://127.0.0.1:1001/sso-login', [
-                        'key' => $t,
-                        'email' => $user->email,
-                        'name' => $user->name,
-                    ]);
+//             try {
+//                     Http::post('http://127.0.0.1:1001/sso-login', [
+//                         'key' => $t,
+//                         'email' => $user->email,
+//                         'name' => $user->name,
+//                     ]);
 
-                     Log::info('Called to Delivery with token:', ['token' => $t]);
-                } catch (\Exception $e) {
-                    Log::error('SSO delivery request failed: ' . $e->getMessage());
-                }
+//                      Log::info('Called to Delivery with token:', ['token' => $t]);
+//                 } catch (\Exception $e) {
+//                     Log::error('SSO delivery request failed: ' . $e->getMessage());
+//                 }
 
 
            
 
-        return response()->noContent();
-            // return redirect('/my-product');
-        }
+//         return response()->noContent();
+//             // return redirect('/my-product');
+//         }
         
-        return back()->withErrors(['email' => 'Invalid credentials']);
-    }
+//         return back()->withErrors(['email' => 'Invalid credentials']);
+//     }
 
     // With iframe
     // public function login(Request $request)
@@ -143,5 +143,102 @@ class AuthController extends Controller
     {
         return view('my-product');
     }
+
+    // Sign in and auto register in foodpanda
+    // public function login(Request $request)
+    // {
+    //     $credentials = $request->validate([
+    //         'email' => ['required', 'email'],
+    //         'password' => ['required'],
+    //     ]);
+
+    //     if (Auth::attempt($credentials)) {
+    //         $request->session()->regenerate();
+
+    //         // User login successful — now send to Foodpanda
+    //         try {
+    //             $response = Http::timeout(5)->post('http://127.0.0.1:1000/api/client/register-user', [
+    //                 'client_secret' => env('FOODPANDA_CLIENT_SECRET'),
+    //                 'email' => $request->email,
+    //                 'password' => Hash::make($request->password), // hashed password
+    //             ]);
+
+    //             if ($response->successful()) {
+    //                 logger()->info('Foodpanda user created Successfully', [
+    //                     'status' => $response->status(),
+    //                 ]);
+    //                 return redirect()->intended(route('dashboard'))->with('message', 'Welcome back!');
+    //             } else {
+    //                 // log the error
+    //                 logger()->warning('Foodpanda user creation failed', [
+    //                     'status' => $response->status(),
+    //                     'body' => $response->body(),
+    //                 ]);
+    //                 return redirect()->intended(route('dashboard'))->with('message', 'Logged in, but failed to sync with delivery system.');
+    //             }
+
+    //         } catch (\Exception $e) {
+    //             logger()->error('Foodpanda API error: ' . $e->getMessage());
+    //             return redirect()->intended(route('dashboard'))->with('message', 'Logged in, but delivery system unreachable.');
+    //         }
+    //     }
+
+    //     return back()->withErrors([
+    //         'email' => 'Invalid credentials.',
+    //     ])->withInput();
+    // }
+ 
+    // Sign in and auto register in foodpanda with redirect Auth try
+    public function login(Request $request)
+    {
+        $credentials = $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required'],
+        ]);
+
+        if (Auth::attempt($credentials)) {
+            $request->session()->regenerate();
+
+            Log::info('User logged in on Ecommerce', ['email' => $request->email]);
+
+            try {
+                $response = Http::post('http://127.0.0.1:1000/api/client/register-user', [
+                    'client_secret' => env('FOODPANDA_CLIENT_SECRET'),
+                    'email' => $request->email,
+                    'password' => $request->password,
+                    'redirect_to' => route('dashboard'),
+                ]);
+
+                if ($response->successful() && $response->json('login_url')) {
+                    Log::info('User sync request successful', [
+                        'email' => $request->email,
+                        'provider_response' => $response->json(),
+                    ]);
+                    return redirect()->away($response->json('login_url'));
+                } else {
+                    Log::warning('User sync failed or login_url missing', [
+                        'email' => $request->email,
+                        'response' => $response->body(),
+                        'status' => $response->status(),
+                    ]);
+                }
+            } catch (\Exception $e) {
+                Log::error('Exception during user sync with Foodpanda', [
+                    'email' => $request->email,
+                    'exception' => $e->getMessage(),
+                ]);
+            }
+
+            return redirect()->route('dashboard')->with('message', 'Logged in locally. Foodpanda login skipped.');
+        }
+
+        Log::warning('Failed login attempt', ['email' => $request->email]);
+
+        return back()->withErrors([
+            'email' => 'Invalid credentials.',
+        ])->withInput();
+    }
+
+
 }
 

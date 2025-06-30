@@ -1,7 +1,9 @@
 <?php
 
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\FoodpandaIntegrationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -34,3 +36,16 @@ Route::middleware('auth')->group(function () {
 });
 
 
+
+// routes/web.php
+
+
+Route::get('/make-user-in-foodpanda', [FoodpandaIntegrationController::class, 'form']);
+Route::post('/make-user-in-foodpanda', [FoodpandaIntegrationController::class, 'registerUser']);
+
+Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard')->middleware('auth');
+
+// Auth::routes();
+// Auth::routes();
+
+// Route::get('/dashboard', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
