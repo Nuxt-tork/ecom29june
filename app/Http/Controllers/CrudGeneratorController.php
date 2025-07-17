@@ -11,13 +11,13 @@ class CrudGeneratorController extends Controller
 {
     public function generate(Request $request)
     {
-        $json = $request->input('json');
+        $json = $request->input('crud_json');
 
         $spec = json_decode($json, true);
         if (!$spec || !isset($spec['columns'])) {
             return back()->withErrors('Invalid JSON or missing columns');
         }
-
+        // dd($spec);
         $modelName = Str::studly($request->input('model_name'));
         $modelVar = Str::camel($modelName);
         $tableName = Str::snake(Str::plural($modelName));
@@ -27,17 +27,72 @@ class CrudGeneratorController extends Controller
         File::ensureDirectoryExists($outputDir);
 
         // Prepare columns info for stubs
-        $fields = array_column($spec['columns'], 'name');
+        
+
         $validations = [];
-        foreach ($spec['columns'] as $col) {
-            $validations[] = [
-                'field' => $col['name'],
-                'rule' => $col['validation'] ?? 'required',
-            ];
+        $fields = [];
+
+        foreach ($spec['columns'] as $type => $cols) {
+            if (in_array($type, ['selectType', 'relationalType'])) {
+                // Handle separately if needed
+                continue;
+            }
+
+            foreach ($cols as $colRaw) {
+                // Skip if empty or not string
+                if (!is_string($colRaw)) continue;
+
+                // Handle field#rule or field* pattern
+                [$field, $extra] = explode('#', $colRaw . '#'); // avoid undefined index
+                $field = trim($field);
+
+                $rule = 'nullable';
+                if (str_contains($field, '*')) {
+                    $field = str_replace('*', '', $field);
+                    $rule = 'required';
+                }
+
+                $validations[] = [
+                    'field' => $field,
+                    'rule' => $rule,
+                ];
+                $fields[] = $field;
+            }
         }
+
+        // Example for selectType:
+        if (!empty($spec['columns']['selectType'])) {
+            foreach ($spec['columns']['selectType'] as $select) {
+                if (!empty($select['name'])) {
+                    $validations[] = [
+                        'field' => $select['name'],
+                        'rule' => 'required', // or nullable
+                    ];
+                    $fields[] = $select['name'];
+                }
+            }
+        }
+
+        // Example for relationalType
+        if (!empty($spec['columns']['relationalType'])) {
+            foreach ($spec['columns']['relationalType'] as $relation) {
+                $foreignKey = $relation['foreign_key'] ?? null;
+                if ($foreignKey) {
+                    $validations[] = [
+                        'field' => $foreignKey,
+                        'rule' => 'required', // or nullable
+                    ];
+                    $fields[] = $foreignKey;
+                }
+            }
+        }
+
+
 
         // --- Generate Migration ---
         $migrationStubPath = resource_path('stubs/crud/migration.stub');
+
+        // dd($migrationStubPath);
         $migrationStub = File::get($migrationStubPath);
 
         $migrationContent = str_replace(
