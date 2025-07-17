@@ -1,0 +1,29 @@
+@extends('layouts.app')
+
+@section('content')
+<div class="container">
+    <h1>Create {{modelName}}</h1>
+
+    @if ($errors->any())
+        <div class="alert alert-danger">
+            <ul>
+                @foreach ($errors->all() as $error)
+                    <li>{{ "{{" }} $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
+    <form action="{{ "{{" }} route('{{routePrefix}}.store') }}" method="POST">
+        @csrf
+        {{#each fields}}
+        <div class="mb-3">
+            <label for="{{this}}" class="form-label">{{this}}</label>
+            <input type="text" class="form-control" id="{{this}}" name="{{this}}" value="{{ old('{{this}}') }}">
+        </div>
+        {{/each}}
+
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+</div>
+@endsection

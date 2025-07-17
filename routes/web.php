@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CrudGeneratorController;
 use App\Http\Controllers\FoodpandaIntegrationController;
 
 /*
@@ -49,3 +50,8 @@ Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'inde
 // Auth::routes();
 
 // Route::get('/dashboard', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+
+
+Route::get('/json-form', [App\Http\Controllers\DashboardController::class, 'showJsonForm'])->name('json.form');
+
+Route::post('/admin/crud-generator/generate', [CrudGeneratorController::class, 'generate'])->name('admin.crud-generator.generate');

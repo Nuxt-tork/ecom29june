@@ -1,0 +1,20 @@
+@extends('layouts.app')
+
+@section('content')
+<div class="container">
+    <h1>Show {{modelName}}</h1>
+
+    <a href="{{ "{{" }} route('{{routePrefix}}.index') }}" class="btn btn-secondary mb-3">Back</a>
+
+    <table class="table table-bordered">
+        <tbody>
+            {{#each fields}}
+            <tr>
+                <th>{{this}}</th>
+                <td>{{ "{{" }} ${{modelVar}}->{{this}} }}</td>
+            </tr>
+            {{/each}}
+        </tbody>
+    </table>
+</div>
+@endsection
